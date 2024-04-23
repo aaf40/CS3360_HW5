@@ -133,12 +133,13 @@ class MultiCPUSimulator:
             self.schedule_event("DEPARTURE", departure_time, next_process, cpu_index)
 
     def update_completion_metrics(self, event):
-        self.processes_completed += 1
-        self.total_service_time += event.process.service_time
-        waiting_time = self.clock - event.process.arrival_time
-        self.total_waiting_time += max(0, waiting_time - event.process.service_time)
-        turnaround_time = self.clock - event.process.arrival_time
+        process = event.process
+        waiting_time = process.start_time - process.arrival_time  # Assuming start_time is set when process is assigned to CPU
+        turnaround_time = self.clock - process.arrival_time
+        self.total_waiting_time += waiting_time
         self.total_turnaround_time += turnaround_time
+        self.processes_completed += 1
+
     
     def generate_process(self, last_arrival_time):
         inter_arrival_time = random.expovariate(self.lambda_rate)
