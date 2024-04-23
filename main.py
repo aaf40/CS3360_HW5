@@ -7,19 +7,19 @@ def main():
         sys.exit(1)
 
     try:
-        lambda_rate = float(sys.argv[1])
+        lambda_rate = int(sys.argv[1])
         average_service_time = float(sys.argv[2])
         scenario = int(sys.argv[3])
         num_cpus = int(sys.argv[4])
 
         if scenario not in [1, 2]:
             raise ValueError("Scenario must be 1 or 2.")
-        if num_cpus < 1:
-            raise ValueError("Number of CPUs must be at least 1.")
-        if lambda_rate < 50 or lambda_rate > 150:
-            raise ValueError("Lambda rate must be between 50 and 150 processes per second.")
-        if average_service_time <= 0:
-            raise ValueError("Average service time must be positive.")
+        if num_cpus != 4:
+            raise ValueError("Number of CPUs must be 4.")
+        if lambda_rate != 50:
+            raise ValueError("Lambda rate must be 50 processes per second.")
+        if average_service_time != 0.02:
+            raise ValueError("Average service time must be 0.02.")
 
     except ValueError as e:
         print(f"Error: {e}")
