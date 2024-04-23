@@ -2,10 +2,15 @@
 import itertools
 
 class Process:
-    _pid_generator = itertools.count(1) 
+    _pid_generator = itertools.count(1)  # PID generator
 
     def __init__(self, arrival_time, service_time):
         self.arrival_time = arrival_time
         self.service_time = service_time
         self.pid = next(self._pid_generator)
+        self.wait_time = 0  # Initialize wait time at creation
+
+    def update_wait_time(self, current_time):
+        self.wait_time += current_time - self.arrival_time  # Example logic
+
 
