@@ -3,13 +3,13 @@ class CPU:
         self.is_busy = False
         self.current_process = None
         self.utilization_time = 0
-        self.last_start_time = None  # To track when the current process started
+        self.last_start_time = None
 
     def assign_process(self, process, current_time):
-        process.start_time = current_time  # Adding this line to update start time
+        process.start_time = current_time
         self.current_process = process
         self.is_busy = True
-        self.last_start_time = current_time  # Start time of the process
+        self.last_start_time = current_time
         return current_time + process.service_time
 
 
