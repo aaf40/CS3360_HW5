@@ -65,19 +65,19 @@ class MultiCPUSimulator:
         # Determine which scenario we are working with
         if self.scenario == 1:
             # Scenario 1: Every CPU has its own queue
-            # Randomly select one of the CPU queues
-            selected_cpu_index = random.randint(0, self.num_cpus - 1)
-            selected_cpu = self.cpus[selected_cpu_index]
-            selected_queue = self.ready_queues[selected_cpu_index]
-            
-            # If the selected CPU is busy, put the process in its queue
+            # Find the least busy CPU based on queue size
+            cpu_index = min(range(self.num_cpus), key=lambda i: self.ready_queues[i].qsize())
+            selected_cpu = self.cpus[cpu_index]
+
             if selected_cpu.is_busy:
-                selected_queue.put(event.process)
+                # If the selected CPU is busy, enqueue the process
+                self.ready_queues[cpu_index].put(event.process)
             else:
                 # If the CPU is idle, assign the process immediately
                 departure_time = selected_cpu.assign_process(event.process, self.clock)
-                self.schedule_event("DEPARTURE", departure_time, event.process, selected_cpu_index)
-            
+                # Schedule the departure event for this process
+                self.schedule_event("DEPARTURE", departure_time, event.process, cpu_index)
+
         elif self.scenario == 2:
             # Scenario 2: All CPUs share a global Ready Queue
             # Check if there is any idle CPU available
@@ -91,35 +91,34 @@ class MultiCPUSimulator:
                     break
             
             if not idle_cpu_found:
-                # If all CPUs are busy, put the process in the global queue
+                # If all CPUs are busy, enqueue the process in the global queue
                 self.global_ready_queue.put(event.process)
         
-        # Regardless of the scenario, schedule the next arrival
+        # Regardless of the scenario, always schedule the arrival of the next process
         next_process = self.generate_process(self.clock)
         self.schedule_event("ARRIVAL", next_process.arrival_time, next_process)
 
-    def handle_departure(self, event, cpu_index=None):
+
+    def handle_departure(self, event, cpu_index):
         if cpu_index is None:
             raise ValueError("CPU index must be provided for departure handling.")
-        # Retrieve the CPU index from the event
-        cpu_index = event.cpu_index
+        
+        cpu = self.cpus[cpu_index]
+        cpu.release(self.clock)  # Correctly update the CPU utilization upon process completion
 
-        # Update the simulator's clock to the event time
-        self.clock = event.event_time
-
-        # Release the process from the specified CPU and update utilization metrics
-        self.cpus[cpu_index].release(self.clock)
-
-        # Process the next steps based on the scenario
+        # Handle the ready queue depending on the scenario
         if self.scenario == 1:
-            # Scenario 1: Each CPU has its own ready queue
-            self.process_departure_scenario1(cpu_index)
-        elif self.scenario == 2:
-            # Scenario 2: All CPUs share a single global ready queue
-            self.process_departure_scenario2(cpu_index)
+            if not self.ready_queues[cpu_index].empty():
+                next_process = self.ready_queues[cpu_index].get()
+                departure_time = cpu.assign_process(next_process, self.clock)
+                self.schedule_event("DEPARTURE", departure_time, next_process, cpu_index)
+        elif self.scenario == 2 and not self.global_ready_queue.empty():
+            next_process = self.global_ready_queue.get()
+            departure_time = cpu.assign_process(next_process, self.clock)
+            self.schedule_event("DEPARTURE", departure_time, next_process, cpu_index)
 
-        # Update completion and performance metrics
-        self.update_completion_metrics(event)
+        self.processes_completed += 1
+
 
     def process_departure_scenario1(self, cpu_index):
         if not self.ready_queues[cpu_index].empty():
