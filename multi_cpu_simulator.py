@@ -49,7 +49,7 @@ class MultiCPUSimulator:
                     if event.event_type == "ARRIVAL":
                         self.handle_arrival(event)
                     elif event.event_type == "DEPARTURE":
-                        self.handle_departure(event, event.cpu_index if hasattr(event, 'cpu_index') else None)
+                        self.handle_departure(event.cpu_index if hasattr(event, 'cpu_index') else None)
                 else:
                     # Log or handle the situation where there are no more events but the end condition isn't met
                     print("Warning: Event queue is empty before end condition is met.")
@@ -99,14 +99,22 @@ class MultiCPUSimulator:
         self.schedule_event("ARRIVAL", next_process.arrival_time, next_process)
 
 
-    def handle_departure(self, event, cpu_index):
+    def handle_departure(self, cpu_index):
         if cpu_index is None:
             raise ValueError("CPU index must be provided for departure handling.")
         
         cpu = self.cpus[cpu_index]
-        cpu.release(self.clock)  # Correctly update the CPU utilization upon process completion
+        process = cpu.current_process
+        waiting_time = process.start_time - process.arrival_time
+        turnaround_time = self.clock - process.arrival_time
+        
+        self.total_waiting_time += waiting_time
+        self.total_turnaround_time += turnaround_time
+        self.processes_completed += 1
 
-        # Handle the ready queue depending on the scenario
+        cpu.release(self.clock)  # Release the CPU and update utilization
+
+        # Process the next process depending on the scenario
         if self.scenario == 1:
             if not self.ready_queues[cpu_index].empty():
                 next_process = self.ready_queues[cpu_index].get()
@@ -117,28 +125,26 @@ class MultiCPUSimulator:
             departure_time = cpu.assign_process(next_process, self.clock)
             self.schedule_event("DEPARTURE", departure_time, next_process, cpu_index)
 
-        self.processes_completed += 1
 
+    # def process_departure_scenario1(self, cpu_index):
+    #     if not self.ready_queues[cpu_index].empty():
+    #             next_process = self.ready_queues[cpu_index].get()
+    #             departure_time = cpu.assign_process(next_process, self.clock)
+    #             self.schedule_event("DEPARTURE", departure_time, next_process, cpu_index)
 
-    def process_departure_scenario1(self, cpu_index):
-        if not self.ready_queues[cpu_index].empty():
-            next_process = self.ready_queues[cpu_index].get()
-            departure_time = self.cpus[cpu_index].assign_process(next_process, self.clock)
-            self.schedule_event("DEPARTURE", departure_time, next_process, cpu_index)
+    # def process_departure_scenario2(self, cpu_index):
+    #     if not self.global_ready_queue.empty():
+    #         next_process = self.global_ready_queue.get()
+    #         departure_time = self.cpus[cpu_index].assign_process(next_process, self.clock)
+    #         self.schedule_event("DEPARTURE", departure_time, next_process, cpu_index)
 
-    def process_departure_scenario2(self, cpu_index):
-        if not self.global_ready_queue.empty():
-            next_process = self.global_ready_queue.get()
-            departure_time = self.cpus[cpu_index].assign_process(next_process, self.clock)
-            self.schedule_event("DEPARTURE", departure_time, next_process, cpu_index)
-
-    def update_completion_metrics(self, event):
-        process = event.process
-        waiting_time = process.start_time - process.arrival_time  # Assuming start_time is set when process is assigned to CPU
-        turnaround_time = self.clock - process.arrival_time
-        self.total_waiting_time += waiting_time
-        self.total_turnaround_time += turnaround_time
-        self.processes_completed += 1
+    # def update_completion_metrics(self, event):
+    #     process = event.process
+    #     waiting_time = process.start_time - process.arrival_time  # Assuming start_time is set when process is assigned to CPU
+    #     turnaround_time = self.clock - process.arrival_time
+    #     self.total_waiting_time += waiting_time
+    #     self.total_turnaround_time += turnaround_time
+    #     self.processes_completed += 1
 
     
     def generate_process(self, last_arrival_time):
@@ -199,6 +205,6 @@ class MultiCPUSimulator:
             print(f"CPU {idx + 1}: {cpu_utilization:.2f}%")
 
         # Print out other metrics
-        print(f"Average Waiting Time: {average_waiting_time:.2f} units")
-        print(f"Average Turnaround Time: {average_turnaround_time:.2f} units")
-        print(f"Total Throughput: {total_throughput:.2f} processes per unit time")
+        print(f"Average Waiting Time: {average_waiting_time:.2f} seconds.")
+        print(f"Average Turnaround Time: {average_turnaround_time:.2f} seconds.")
+        print(f"Total Throughput: {total_throughput:.2f} processes per second.")
