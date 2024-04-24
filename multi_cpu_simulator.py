@@ -57,7 +57,7 @@ class MultiCPUSimulator:
 
     def handle_arrival(self, event):
         if self.scenario == 1:
-            cpu_index = min(range(self.num_cpus), key=lambda i: self.ready_queues[i].qsize())
+            cpu_index = random.randint(0, self.num_cpus - 1)
             selected_cpu = self.cpus[cpu_index]
 
             if selected_cpu.is_busy:
@@ -74,10 +74,10 @@ class MultiCPUSimulator:
                     self.schedule_event("DEPARTURE", departure_time, event.process, cpu_index)
                     idle_cpu_found = True
                     break
-            
+
             if not idle_cpu_found:
                 self.global_ready_queue.put(event.process)
-        
+
         next_process = self.generate_process(self.clock)
         self.schedule_event("ARRIVAL", next_process.arrival_time, next_process)
 
