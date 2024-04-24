@@ -25,16 +25,16 @@ class MultiCPUSimulator:
         self.total_processes_arrived = 0
         
         self.cpus = [CPU() for _ in range(num_cpus)]
-        if scenario == 1:
-            self.ready_queues = [queue.Queue() for _ in range(num_cpus)]
-        else:
-            self.global_ready_queue = queue.Queue()
+        self.ready_queues = [queue.Queue() for _ in range(num_cpus)]
+        self.global_ready_queue = queue.Queue() if scenario == 2 else None
 
         self.cpu_utilization_logs = [[] for _ in range(num_cpus)]
 
     def run(self):
         initial_process = self.generate_process(0)
         self.schedule_event("ARRIVAL", initial_process.arrival_time, initial_process)
+
+        self.queue_length_logs = [[] for _ in range(self.num_cpus)]
 
         try:
             while not self.end_condition():
@@ -46,6 +46,10 @@ class MultiCPUSimulator:
                         self.handle_arrival(event)
                     elif event.event_type == "DEPARTURE":
                         self.handle_departure(event.cpu_index if hasattr(event, 'cpu_index') else None)
+
+                    for idx, queue in enumerate(self.ready_queues):
+                        self.queue_length_logs[idx].append(queue.qsize())
+
                 else:
                     print("Warning: Event queue is empty before end condition is met.")
                     break
@@ -133,18 +137,16 @@ class MultiCPUSimulator:
             return
 
         average_waiting_time = self.total_waiting_time / self.processes_completed
-
         average_turnaround_time = self.total_turnaround_time / self.processes_completed
-
         total_throughput = self.processes_completed / self.clock
 
         if self.scenario == 1:
-            average_queue_lengths = [queue.qsize() for queue in self.ready_queues]
-            print("Average Queue Lengths for Each CPU Queue:")
-            for idx, length in enumerate(average_queue_lengths):
-                print(f"CPU {idx + 1}: {length}")
+            total_queue_lengths = [sum(lengths) / len(lengths) if lengths else 0 for lengths in self.queue_length_logs]
+            print("Dynamic Average Queue Lengths for Each CPU Queue:")
+            for idx, length in enumerate(total_queue_lengths):
+                print(f"CPU {idx + 1}: {length:.2f}")
         elif self.scenario == 2:
-            average_queue_length = self.global_ready_queue.qsize()
+            average_queue_length = self.global_ready_queue.qsize() if self.global_ready_queue else 0
             print(f"Average Queue Length for Global Queue: {average_queue_length}")
 
         print("CPU Utilizations:")
@@ -155,3 +157,4 @@ class MultiCPUSimulator:
         print(f"Average Waiting Time: {average_waiting_time:.2f} seconds.")
         print(f"Average Turnaround Time: {average_turnaround_time:.2f} seconds.")
         print(f"Total Throughput: {total_throughput:.2f} processes per second.")
+
